@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>スマホでブロック崩し</title>
+    <title>ブロック崩し mi7t0</title>
     <style>
         body { background: #333; text-align: center; color: white; margin: 0; padding-top: 20px; }
         canvas { background: gray; display: block; margin: 0 auto; touch-action: none; }
@@ -20,7 +20,26 @@
         let paddleX = 130, paddleY = 460, paddleW = 100, paddleH = 15;
         let isStarted = false;
 
-        // タッチ操作やマウス操作でラケットを動かす
+        const colors = ["#d9d1e4", "#8870ac", "#432A68", "#363e6b", "#232A70", "#121252"];
+        let blocks = [];
+
+        function initBlocks() {
+            blocks = [];
+            for (let row = 0; row < 6; row++) {
+                for (let col = 0; col < 6; col++) {
+                    blocks.push({
+                        x: col * 60 + 2,
+                        y: row * 20 + 2,
+                        w: 56,
+                        h: 16,
+                        color: colors[row],
+                        status: 1
+                    });
+                }
+            }
+        }
+        initBlocks();
+
         function movePaddle(clientX) {
             const rect = canvas.getBoundingClientRect();
             let x = clientX - rect.left;
@@ -41,6 +60,14 @@
         function draw() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+            // ブロックを描く
+            for (let b of blocks) {
+                if (b.status === 1) {
+                    ctx.fillStyle = b.color;
+                    ctx.fillRect(b.x, b.y, b.w, b.h);
+                }
+            }
+
             // ラケットを描く
             ctx.fillStyle = "black";
             ctx.fillRect(paddleX, paddleY, paddleW, paddleH);
@@ -55,20 +82,29 @@
                 ballX += dx;
                 ballY += dy;
 
-                // 壁の跳ね返り
                 if (ballX < 10 || ballX > canvas.width - 10) dx = -dx;
                 if (ballY < 10) dy = -dy;
 
-                // ラケットとの当たり判定
                 if (ballY + 10 >= paddleY && ballX >= paddleX && ballX <= paddleX + paddleW) {
                     dy = -Math.abs(dy);
                 }
 
-                // ゲームオーバー
-                if (ballY > canvas.height) {
+                // ブロックとの当たり判定
+                for (let b of blocks) {
+                    if (b.status === 1) {
+                        if (ballX > b.x && ballX < b.x + b.w && ballY > b.y && ballY < b.y + b.h) {
+                            dy = -dy;
+                            b.status = 0;
+                        }
+                    }
+                }
+                blocks = blocks.filter(b => b.status === 1);
+
+                if (ballY > canvas.height || blocks.length === 0) {
                     isStarted = false;
                     ballX = 180;
                     ballY = 200;
+                    initBlocks();
                 }
             } else {
                 ctx.fillStyle = "white";
