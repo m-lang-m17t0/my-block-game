@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ブロック崩し mi7t0</title>
+    <title>ブロック崩し - mi7t0</title>
     <style>
         body { background: #333; text-align: center; color: white; margin: 0; padding-top: 20px; }
         canvas { background: gray; display: block; margin: 0 auto; touch-action: none; }
@@ -11,14 +11,18 @@
 </head>
 <body>
     <h1>ブロック崩し</h1>
-    <canvas id="gameCanvas" width="360" height="500"></canvas>
+    <canvas id="gameCanvas" width="600" height="650"></canvas>
     <script>
         const canvas = document.getElementById("gameCanvas");
         const ctx = canvas.getContext("2d");
 
-        let ballX = 180, ballY = 200, dx = 3, dy = -5;
-        let paddleX = 130, paddleY = 460, paddleW = 100, paddleH = 15;
+        const width = 600;
+        const height = 650;
+
+        let ballX = 290, ballY = 200, dx = 3, dy = -9;
+        let paddleX = 250, paddleY = 600, paddleW = 100, paddleH = 15;
         let isStarted = false;
+        let isGameOver = false;
 
         const colors = ["#d9d1e4", "#8870ac", "#432A68", "#363e6b", "#232A70", "#121252"];
         let blocks = [];
@@ -26,15 +30,18 @@
         function initBlocks() {
             blocks = [];
             for (let row = 0; row < 6; row++) {
-                for (let col = 0; col < 6; col++) {
-                    blocks.push({
-                        x: col * 60 + 2,
-                        y: row * 20 + 2,
-                        w: 56,
-                        h: 16,
-                        color: colors[row],
-                        status: 1
-                    });
+                for (let col = 0; col < 10; col++) {
+                    // Pythonの random.random() < 0.6
+                    if (Math.random() < 0.6) {
+                        blocks.push({
+                            x: col * 60 + 2,
+                            y: row * 25 + 2,
+                            w: 56,
+                            h: 21,
+                            color: colors[row],
+                            status: 1
+                        });
+                    }
                 }
             }
         }
@@ -42,10 +49,12 @@
 
         function movePaddle(clientX) {
             const rect = canvas.getBoundingClientRect();
-            let x = clientX - rect.left;
+            // 画面サイズとCanvasサイズの比率を考慮してラケット位置を計算
+            let scale = canvas.width / rect.width;
+            let x = (clientX - rect.left) * scale;
             paddleX = x - paddleW / 2;
             if (paddleX < 0) paddleX = 0;
-            if (paddleX > canvas.width - paddleW) paddleX = canvas.width - paddleW;
+            if (paddleX > width - paddleW) paddleX = width - paddleW;
         }
 
         canvas.addEventListener("mousemove", (e) => movePaddle(e.clientX));
@@ -54,11 +63,28 @@
             e.preventDefault();
         }, { passive: false });
 
-        canvas.addEventListener("click", () => { isStarted = true; });
-        canvas.addEventListener("touchstart", () => { isStarted = true; });
+        function startGame() {
+            if (isGameOver) {
+                ballX = 290;
+                ballY = 200;
+                dx = 3;
+                dy = -9;
+                initBlocks();
+                isGameOver = false;
+                isStarted = true;
+            } else if (!isStarted) {
+                isStarted = true;
+            }
+        }
+
+        canvas.addEventListener("click", startGame);
+        canvas.addEventListener("touchstart", (e) => {
+            startGame();
+            e.preventDefault();
+        }, { passive: false });
 
         function draw() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.clearRect(0, 0, width, height);
 
             // ブロックを描く
             for (let b of blocks) {
@@ -78,38 +104,60 @@
             ctx.arc(ballX, ballY, 10, 0, Math.PI * 2);
             ctx.fill();
 
-            if (isStarted) {
+            if (isStarted && !isGameOver) {
                 ballX += dx;
                 ballY += dy;
 
-                if (ballX < 10 || ballX > canvas.width - 10) dx = -dx;
-                if (ballY < 10) dy = -dy;
+                // 壁の跳ね返り
+                if (ballX <= 10 || ballX >= width - 10) dx = -dx;
+                if (ballY <= 10) dy = -dy;
 
-                if (ballY + 10 >= paddleY && ballX >= paddleX && ballX <= paddleX + paddleW) {
+                // ラケットとの当たり判定
+                if (ballY + 10 >= paddleY && ballY <= paddleY + paddleH && ballX >= paddleX && ballX <= paddleX + paddleW) {
                     dy = -Math.abs(dy);
                 }
 
                 // ブロックとの当たり判定
                 for (let b of blocks) {
                     if (b.status === 1) {
-                        if (ballX > b.x && ballX < b.x + b.w && ballY > b.y && ballY < b.y + b.h) {
-                            dy = -dy;
+                        if (ballX >= b.x && ballX <= b.x + b.w && ballY >= b.y && ballY <= b.y + b.h) {
                             b.status = 0;
+                            dy = -dy;
+                            break;
                         }
                     }
                 }
                 blocks = blocks.filter(b => b.status === 1);
 
-                if (ballY > canvas.height || blocks.length === 0) {
+                // ゲームオーバー判定
+                if (ballY >= height) {
+                    isGameOver = true;
                     isStarted = false;
-                    ballX = 180;
-                    ballY = 200;
-                    initBlocks();
                 }
-            } else {
+                // クリア判定
+                if (blocks.length === 0) {
+                    isGameOver = true;
+                    isStarted = false;
+                }
+            } else if (!isStarted && !isGameOver) {
+                ctx.fillStyle = "white";
+                ctx.font = "24px Arial";
+                ctx.textAlign = "center";
+                ctx.fillText("タップしてスタート", width / 2, height / 2);
+            }
+
+            if (isGameOver) {
+                ctx.fillStyle = blocks.length === 0 ? "yellow" : "red";
+                ctx.font = "30px Arial";
+                ctx.textAlign = "center";
+                if (blocks.length === 0) {
+                    ctx.fillText("おめでとう!", width / 2, height / 2 - 20);
+                } else {
+                    ctx.fillText("GAME OVER", width / 2, height / 2 - 20);
+                }
                 ctx.fillStyle = "white";
                 ctx.font = "20px Arial";
-                ctx.fillText("タッチしてスタート", 90, 250);
+                ctx.fillText("タップして再スタート", width / 2, height / 2 + 30);
             }
 
             requestAnimationFrame(draw);
