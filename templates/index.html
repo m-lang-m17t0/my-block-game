@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ブロック崩し - mi7t0</title>
+    <title>ブロック崩し</title>
     <style>
         body { 
             background: #333; 
@@ -11,6 +11,7 @@
             color: white; 
             margin: 0; 
             padding: 10px; 
+            touch-action: none;
         }
         h1 {
             font-size: 24px;
@@ -20,15 +21,14 @@
             background: gray; 
             display: block; 
             margin: 0 auto; 
-            width: 100%;       /* スマホの画面幅に合わせて自動調整 */
-            max-width: 450px;  /* 大きくなりすぎないように制限 */
-            height: auto;      /* 縦横比を保つ */
-            touch-action: none; 
+            width: 100%;       
+            max-width: 450px;  
+            height: auto;      
         }
     </style>
 </head>
 <body>
-    <h1>ブロック崩し</h1>
+    <h1>ブロック崩し - mi7t0</h1>
     <canvas id="gameCanvas" width="600" height="650"></canvas>
     <script>
         const canvas = document.getElementById("gameCanvas");
@@ -64,22 +64,14 @@
         }
         initBlocks();
 
-        function movePaddle(clientX) {
-            const rect = canvas.getBoundingClientRect();
-            let scale = canvas.width / rect.width;
-            let x = (clientX - rect.left) * scale;
-            paddleX = x - paddleW / 2;
-            if (paddleX < 0) paddleX = 0;
-            if (paddleX > width - paddleW) paddleX = width - paddleW;
-        }
+        // 画面全体でのタッチ・マウス移動によるラケット操作
+        let touchStartX = 0;
+        let paddleStartX = 0;
 
-        canvas.addEventListener("mousemove", (e) => movePaddle(e.clientX));
-        canvas.addEventListener("touchmove", (e) => {
-            movePaddle(e.touches[0].clientX);
-            e.preventDefault();
-        }, { passive: false });
-
-        function startGame() {
+        function handleStart(clientX) {
+            touchStartX = clientX;
+            paddleStartX = paddleX;
+            
             if (isGameOver) {
                 ballX = 290;
                 ballY = 200;
@@ -93,9 +85,30 @@
             }
         }
 
-        canvas.addEventListener("click", startGame);
-        canvas.addEventListener("touchstart", (e) => {
-            startGame();
+        function handleMove(clientX) {
+            const rect = canvas.getBoundingClientRect();
+            let scale = canvas.width / rect.width;
+            let diffX = (clientX - touchStartX) * scale;
+            
+            paddleX = paddleStartX + diffX;
+            if (paddleX < 0) paddleX = 0;
+            if (paddleX > width - paddleW) paddleX = width - paddleW;
+        }
+
+        // マウス操作
+        window.addEventListener("mousedown", (e) => handleStart(e.clientX));
+        window.addEventListener("mousemove", (e) => {
+            if (e.buttons === 1) handleMove(e.clientX);
+        });
+
+        // タッチ操作
+        window.addEventListener("touchstart", (e) => {
+            handleStart(e.touches[0].clientX);
+            e.preventDefault();
+        }, { passive: false });
+
+        window.addEventListener("touchmove", (e) => {
+            handleMove(e.touches[0].clientX);
             e.preventDefault();
         }, { passive: false });
 
