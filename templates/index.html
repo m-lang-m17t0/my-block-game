@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>スマホでブロック崩し</title>
+    <style>
+        body { background: #333; text-align: center; color: white; margin: 0; padding-top: 20px; }
+        canvas { background: gray; display: block; margin: 0 auto; touch-action: none; }
+    </style>
+</head>
+<body>
+    <h1>ブロック崩し</h1>
+    <canvas id="gameCanvas" width="360" height="500"></canvas>
+    <script>
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+
+        let ballX = 180, ballY = 200, dx = 3, dy = -5;
+        let paddleX = 130, paddleY = 460, paddleW = 100, paddleH = 15;
+        let isStarted = false;
+
+        // タッチ操作やマウス操作でラケットを動かす
+        function movePaddle(clientX) {
+            const rect = canvas.getBoundingClientRect();
+            let x = clientX - rect.left;
+            paddleX = x - paddleW / 2;
+            if (paddleX < 0) paddleX = 0;
+            if (paddleX > canvas.width - paddleW) paddleX = canvas.width - paddleW;
+        }
+
+        canvas.addEventListener("mousemove", (e) => movePaddle(e.clientX));
+        canvas.addEventListener("touchmove", (e) => {
+            movePaddle(e.touches[0].clientX);
+            e.preventDefault();
+        }, { passive: false });
+
+        canvas.addEventListener("click", () => { isStarted = true; });
+        canvas.addEventListener("touchstart", () => { isStarted = true; });
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // ラケットを描く
+            ctx.fillStyle = "black";
+            ctx.fillRect(paddleX, paddleY, paddleW, paddleH);
+
+            // ボールを描く
+            ctx.fillStyle = "white";
+            ctx.beginPath();
+            ctx.arc(ballX, ballY, 10, 0, Math.PI * 2);
+            ctx.fill();
+
+            if (isStarted) {
+                ballX += dx;
+                ballY += dy;
+
+                // 壁の跳ね返り
+                if (ballX < 10 || ballX > canvas.width - 10) dx = -dx;
+                if (ballY < 10) dy = -dy;
+
+                // ラケットとの当たり判定
+                if (ballY + 10 >= paddleY && ballX >= paddleX && ballX <= paddleX + paddleW) {
+                    dy = -Math.abs(dy);
+                }
+
+                // ゲームオーバー
+                if (ballY > canvas.height) {
+                    isStarted = false;
+                    ballX = 180;
+                    ballY = 200;
+                }
+            } else {
+                ctx.fillStyle = "white";
+                ctx.font = "20px Arial";
+                ctx.fillText("タッチしてスタート", 90, 250);
+            }
+
+            requestAnimationFrame(draw);
+        }
+
+        draw();
+    </script>
+</body>
+</html>
